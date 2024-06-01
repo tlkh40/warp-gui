@@ -46,6 +46,7 @@ module WarpUtil =
 
 module App =
     open Avalonia.Themes.Fluent
+    open Avalonia.Controls.ApplicationLifetimes
 
     type Model =
         { Connected: bool }
@@ -63,7 +64,7 @@ module App =
             do! Async.Sleep 15000
             return GetState(true)
         }
-        |> Cmd.ofAsyncMsg
+        |> Cmd.OfAsync.msg
 
     let init () = initModel, Cmd.ofMsg (GetState true)
 
@@ -77,7 +78,7 @@ module App =
             let connection = WarpUtil.getConnection ()
             { model with Connected = connection }, (if s then timerCmd() else Cmd.none)
 
-    let view model =
+    let content model =
         (VStack() {
             TextBlock("Warp UI").fontSize(30)
                 .fontWeight(FontWeight.Bold).centerText()
@@ -104,15 +105,54 @@ module App =
         )
 
 
-    let app model = 
+    let theme = FluentTheme()
+
+    let view model = 
         DesktopApplication(
-        Window(view model)
+        Window(content model)
             .height(450)
             .width(300)
             .canResize(false)
         )
          |> _.trayIcon((trayIcon model))
     
-    let theme = FluentTheme()
+    let create () =
+        let program = Program.statefulWithCmd init update 
+                                                            |> Program.withView view
 
-    let program = Program.statefulWithCmd init update app
+        Avalonia.AppBuilder.Configure(fun () ->
+            let app =
+                FabApplication(
+                    OnFrameworkInitialized =
+                        fun app ->
+                            let widget = 
+                                (View.Component(program.State) {
+                                    let! model = Mvu.State
+                                    program.View model
+                                }).Compile()
+
+                            let treeContext: ViewTreeContext =
+                                { CanReuseView = program.CanReuseView
+                                  GetViewNode = ViewNode.get
+                                  GetComponent = Component.get
+                                  SetComponent = Component.set
+                                  SyncAction = program.SyncAction
+                                  Logger = program.State.Logger
+                                  Dispatch = ignore }
+
+                            let def = WidgetDefinitionStore.get widget.Key
+                            def.AttachView(widget, treeContext, ValueNone, app) |> ignore
+                            match app.ApplicationLifetime with
+                            | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
+                                desktopLifetime.ShutdownMode <- ShutdownMode.OnExplicitShutdown
+                            | _ -> ()
+
+                )
+            app.RequestedThemeVariant <- Avalonia.Styling.ThemeVariant.Dark
+            app.Resources["ToggleSwitchPostContentMargin"] <- 0
+            app.Resources["ToggleSwitchPreContentMargin"] <- 0
+            app.Styles.Add(FluentTheme())
+            app)
+        // FabulousAppBuilder
+        //     .Configure(FluentTheme, program)
+
