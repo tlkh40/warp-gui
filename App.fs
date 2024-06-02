@@ -54,29 +54,21 @@ module App =
     type Msg =
         | ToggleConnection of bool
         // True from timer, false from normal
-        | Exit
         | GetState of bool
+        | Exit
+        | Show
 
     let initModel = { Connected = false }
 
     let timerCmd () =
         async {
             do! Async.Sleep 15000
+            printfn "Hi"
             return GetState(true)
         }
         |> Cmd.OfAsync.msg
 
     let init () = initModel, Cmd.ofMsg (GetState true)
-
-    let update msg model =
-        match msg with
-        | Exit -> model, Cmd.none
-        | ToggleConnection(_) ->
-            WarpUtil.toggleConnection ()
-            model, Cmd.ofMsg (GetState false)
-        | GetState(s) ->
-            let connection = WarpUtil.getConnection ()
-            { model with Connected = connection }, (if s then timerCmd() else Cmd.none)
 
     let content model =
         (VStack() {
@@ -97,22 +89,50 @@ module App =
     let trayIcon model = 
         TrayIcon(
             (trayUrl model), "Warp ui"
-        ).menu(
+        ).onClicked(Show).menu(
             NativeMenu() {
                 NativeMenuItem("Toggle connection", ToggleConnection false)
                 NativeMenuItem("exit", Exit)
             }
         )
 
-
-    let theme = FluentTheme()
-
-    let view model = 
-        DesktopApplication(
+    let window model = 
         Window(content model)
             .height(450)
             .width(300)
             .canResize(false)
+
+    let update msg model =
+        match msg with
+        | Exit ->
+            match FabApplication.Current.ApplicationLifetime with
+            | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
+                desktopLifetime.Shutdown()
+            | _ -> ()
+            model, Cmd.none
+        | ToggleConnection(_) ->
+            WarpUtil.toggleConnection ()
+            model, Cmd.ofMsg (GetState false)
+        | GetState(s) ->
+            let connection = WarpUtil.getConnection ()
+            { model with Connected = connection }, (if s then timerCmd() else Cmd.none)
+        | Show ->
+            if not FabApplication.Current.MainWindow.IsVisible then
+                try
+                    let node = ViewNode.get(FabApplication.Current)
+                    let struct (_, view) = Helpers.createViewForWidget node ((window model).Compile())
+                    FabApplication.Current.MainWindow <- view :?> Window 
+                    FabApplication.Current.MainWindow.Show()
+                    FabApplication.Current.MainWindow.BringIntoView()
+                    FabApplication.Current.MainWindow.Focus() |> ignore
+                with
+                    | b -> printfn $"{b}"
+            model, Cmd.none
+
+
+    let view model = 
+        DesktopApplication(
+            (window model)
         )
          |> _.trayIcon((trayIcon model))
     
@@ -153,6 +173,3 @@ module App =
             app.Resources["ToggleSwitchPreContentMargin"] <- 0
             app.Styles.Add(FluentTheme())
             app)
-        // FabulousAppBuilder
-        //     .Configure(FluentTheme, program)
-

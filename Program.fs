@@ -9,7 +9,7 @@ open warp
 module Program =
     [<CompiledName "BuildAvaloniaApp">]
     let buildAvaloniaApp () =
-        // AppBuilder
+        // AppBuilder`
         //     // .Configure(fun () ->
         //     //     let app = Program.startApplication App.program
         //     //     app.Styles.Add(App.theme)
@@ -26,4 +26,5 @@ module Program =
 
     [<EntryPoint; STAThread>]
     let main argv =
-        buildAvaloniaApp().StartWithClassicDesktopLifetime(argv)
+        buildAvaloniaApp()
+            .StartWithClassicDesktopLifetime(argv)
