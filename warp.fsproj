@@ -5,6 +5,8 @@
     <!-- net7.0-ios is not supported on Linux, so we do not add it there. -->
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux')) == false">$(TargetFrameworks)</TargetFrameworks>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <PublishAot>true</PublishAot>
+    <StripSymbols>true</StripSymbols> 
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\*" />
