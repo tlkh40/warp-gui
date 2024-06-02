@@ -84,14 +84,20 @@ module App =
 
     let trayUrl model =
         if model.Connected then "avares://warp/Assets/connected.ico" else "avares://warp/Assets/disconnected.ico"
+    
+    let trayToggleMessage model =
+        if model.Connected then 
+            "Disconnect from Warp" 
+        else 
+            "Connect to Warp"
 
     let trayIcon model = 
         TrayIcon(
             (trayUrl model), "Warp ui"
         ).onClicked(Show).menu(
             NativeMenu() {
-                NativeMenuItem("Toggle connection", ToggleConnection false)
-                NativeMenuItem("exit", Exit)
+                NativeMenuItem(trayToggleMessage(model), ToggleConnection false)
+                NativeMenuItem("Exit Warp UI", Exit)
             }
         )
 
