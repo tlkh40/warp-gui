@@ -63,7 +63,6 @@ module App =
     let timerCmd () =
         async {
             do! Async.Sleep 15000
-            printfn "Hi"
             return GetState(true)
         }
         |> Cmd.OfAsync.msg
